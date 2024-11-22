@@ -1,0 +1,34 @@
+name: Auto Merge Pull Requests
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  pull-requests: write
+  contents: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Auto merge pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if the pull request can be merged
+          PR_NUMBER=$(jq -r .number < "$GITHUB_EVENT_PATH")
+          STATUS=$(gh pr view $PR_NUMBER --json mergeable --jq .mergeable)
+
+          if [[ "$STATUS" == "MERGEABLE" ]]; then
+            echo "Merging PR #$PR_NUMBER"
+            gh pr merge $PR_NUMBER --merge --admin
+          else
+            echo "PR #$PR_NUMBER is not mergeable."
+          fi
